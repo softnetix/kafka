@@ -1,10 +1,12 @@
-FROM apache/kafka:4.0.0
+FROM  confluentinc/cp-kafka:7.7.1
 
 LABEL maintainer="Softnetix"
-LABEL version="1.0.0"
+LABEL version="1.0.2"
+
+USER root
 
 # Download jmx_prometheus_javaagent
-RUN  mkdir -p /opt/kafka/jmx && wget -O /opt/kafka/jmx/jmx_prometheus_javaagent.jar \
+RUN mkdir -p /opt/kafka/jmx && wget -O /opt/kafka/jmx/jmx_prometheus_javaagent.jar \
     https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
 
 COPY kafka-jmx.yml /opt/kafka/jmx/kafka-jmx.yml
