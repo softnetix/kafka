@@ -1,7 +1,7 @@
-FROM  confluentinc/cp-kafka:7.7.1
+FROM  apache/kafka:4.0.0
 
 LABEL maintainer="Softnetix"
-LABEL version="1.0.2"
+LABEL version="1.1.0"
 
 USER root
 
