@@ -1,6 +1,30 @@
 lowercaseOutputName: true
 
 rules:
+    # CPU Usage (System-wide)
+  - pattern: "java.lang<type=OperatingSystem><>SystemCpuLoad"
+    name: "system_cpu_usage"
+    type: GAUGE
+    help: "Total system CPU usage (0.0-1.0)"
+  # Open File Descriptors (Kafka process)
+  - pattern: "java.lang<type=OperatingSystem><>OpenFileDescriptorCount"
+    name: "process_files_open_files"
+    type: GAUGE
+    help: "Number of open file descriptors by the Kafka process"
+
+  # Memory Usage
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage><>(used|max|committed|init)'
+    name: 'jvm_memory_$1_bytes'
+    type: GAUGE
+    labels:
+      area: 'heap'
+
+  - pattern: 'java.lang<type=Memory><NonHeapMemoryUsage><>(used|max|committed|init)'
+    name: 'jvm_memory_$1_bytes'
+    type: GAUGE
+    labels:
+      area: 'nonheap'
+
   # Special cases and very specific rules
   - pattern : kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
     name: kafka_server_$1_$2
