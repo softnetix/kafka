@@ -6,7 +6,8 @@ LABEL version="2.0.0"
 USER root
 
 # Download jmx_prometheus_javaagent
-RUN mkdir -p /opt/kafka/jmx && wget -O /opt/kafka/jmx/jmx_prometheus_javaagent.jar \
-    https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/1.5.0/jmx_prometheus_javaagent-1.5.0.jar
+RUN mkdir -p /opt/kafka/jmx && \
+    curl -fsSL -o /opt/kafka/jmx/jmx_prometheus_javaagent.jar \
+      https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/1.5.0/jmx_prometheus_javaagent-1.5.0.jar
 
 COPY kafka-jmx.yml /opt/kafka/jmx/kafka-jmx.yml
