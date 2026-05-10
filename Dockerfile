@@ -1,4 +1,4 @@
-FROM  confluentinc/cp-kafka:7.7.1
+FROM  confluentinc/cp-kafka:7.9.1
 
 LABEL maintainer="Softnetix"
 LABEL version="1.1.0"
