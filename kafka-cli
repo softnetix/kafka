@@ -1,0 +1,86 @@
+#!/bin/bash
+set -e
+
+BOOTSTRAP="${KAFKA_BOOTSTRAP:-localhost:29094}"
+
+unset KAFKA_OPTS KAFKA_JMX_OPTS JMX_PORT
+
+usage() {
+    echo "usage: kafka-cli COMMAND [ARGS]"
+    echo ""
+    echo "Commands:"
+    echo "  lag GROUP        Describe consumer group lag"
+    echo "  groups           List all consumer groups"
+    echo "  summary          All consumer groups with total lag, sorted desc"
+    echo "  topics           List all topics"
+    echo "  desc TOPIC       Describe topic (partitions, RF, ISR)"
+    echo "  offsets TOPIC    Latest (high water mark) offsets per partition"
+    echo "  earliest TOPIC   Earliest (low water mark) offsets per partition"
+    echo "  size TOPIC       Total messages in topic (sum of high-low per partition)"
+    echo ""
+    echo "Env:"
+    echo "  KAFKA_BOOTSTRAP  Override bootstrap server (default: localhost:29094)"
+    exit 1
+}
+
+case "$1" in
+    lag)
+        shift
+        [ -z "${1:-}" ] && usage
+        exec kafka-consumer-groups --bootstrap-server "$BOOTSTRAP" --describe --group "$1"
+        ;;
+    groups)
+        exec kafka-consumer-groups --bootstrap-server "$BOOTSTRAP" --list
+        ;;
+    summary)
+        kafka-consumer-groups --bootstrap-server "$BOOTSTRAP" --all-groups --describe 2>/dev/null \
+            | awk '
+                $1 != "GROUP" && $1 != "" && $6 ~ /^[0-9]+$/ { groups[$1] += $6 }
+                END {
+                    printf "%-60s %s\n", "GROUP", "LAG"
+                    for (g in groups) printf "%-60s %d\n", g, groups[g]
+                }
+            ' \
+            | (read header; echo "$header"; sort -k2 -nr)
+        ;;
+    topics)
+        exec kafka-topics --bootstrap-server "$BOOTSTRAP" --list
+        ;;
+    desc)
+        shift
+        [ -z "${1:-}" ] && usage
+        exec kafka-topics --bootstrap-server "$BOOTSTRAP" --describe --topic "$1"
+        ;;
+    offsets)
+        shift
+        [ -z "${1:-}" ] && usage
+        exec kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server "$BOOTSTRAP" --topic "$1" --time -1
+        ;;
+    earliest)
+        shift
+        [ -z "${1:-}" ] && usage
+        exec kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server "$BOOTSTRAP" --topic "$1" --time -2
+        ;;
+    size)
+        shift
+        [ -z "${1:-}" ] && usage
+        TOPIC="$1"
+        LATEST=$(kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server "$BOOTSTRAP" --topic "$TOPIC" --time -1)
+        EARLIEST=$(kafka-run-class kafka.tools.GetOffsetShell --bootstrap-server "$BOOTSTRAP" --topic "$TOPIC" --time -2)
+        { echo "$LATEST"; echo "---"; echo "$EARLIEST"; } | awk -F: -v topic="$TOPIC" '
+            BEGIN { mode = 1 }
+            /^---$/ { mode = 2; next }
+            mode == 1 && NF == 3 { hi[$1":"$2] = $3; partitions[$1":"$2] = 1 }
+            mode == 2 && NF == 3 { lo[$1":"$2] = $3 }
+            END {
+                total = 0
+                pcount = 0
+                for (k in hi) { total += hi[k] - lo[k]; pcount++ }
+                printf "%-50s %15d messages (%d partitions)\n", topic, total, pcount
+            }
+        '
+        ;;
+    *)
+        usage
+        ;;
+esac
